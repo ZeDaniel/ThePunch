@@ -17,6 +17,11 @@ public:
 
 	float GetSpriteScale() const { return SpriteScale; }
 
+	void SetIsMovingSprite(bool IsMoving) { IsMovingSprite = IsMoving; }
+
+	float GetRotateSpeed() { return RotateSpeed; }
+	void SetRotateSpeed(float NewSpeed) { RotateSpeed = NewSpeed; }
+
 	void UpdateSpriteScale(float NewSpriteScale);
 
 	void HandleDestruction();
@@ -29,9 +34,20 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	class UPaperSpriteComponent* SpriteComp;
 	
+	UPROPERTY(EditAnywhere, Category = "Move Settings")
+	float RotateMax = 45.f;
+	UPROPERTY(EditAnywhere, Category = "Move Settings")
+	float RotateMin = -45.f;
+	UPROPERTY(EditAnywhere, Category = "Move Settings")
+	float RotateSpeed = 5.f;
+
 	virtual void BeginPlay() override;
 
 	float SpriteScale = 1.f;
+
+private:
+
+	bool IsMovingSprite = false;
 
 public:	
 	// Called every frame

@@ -31,14 +31,14 @@ void AScalableSprite::UpdateSpriteScale(float NewSpriteScale)
 void AScalableSprite::HandleDestruction()
 {
 	//sound effect and anim
-	Destroy();
+	BoxComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SpriteComp->SetVisibility(false);
 }
 
 // Called when the game starts or when spawned
 void AScalableSprite::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 // Called every frame
@@ -46,5 +46,19 @@ void AScalableSprite::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (IsMovingSprite)
+	{
+		if (RootComponent->GetRelativeRotation().Pitch >= RotateMax)
+		{
+			RotateSpeed = -RotateSpeed;
+		}
+		else if (RootComponent->GetRelativeRotation().Pitch <= RotateMin)
+		{
+			RotateSpeed = -RotateSpeed;
+		}
+
+		FRotator DeltaRotation(DeltaTime * RotateSpeed, 0, 0);
+		RootComponent->AddLocalRotation(DeltaRotation);
+	}
 }
 

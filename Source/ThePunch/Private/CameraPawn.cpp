@@ -45,7 +45,8 @@ void ACameraPawn::BeginPlay()
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem< UEnhancedInputLocalPlayerSubsystem>(ThePunchPlayerController->GetLocalPlayer()))
 		{
-			Subsystem->AddMappingContext(BoostBarMappingContext, 0);
+			Subsystem->AddMappingContext(BaseMappingContext, 0);
+			Subsystem->AddMappingContext(BoostBarMappingContext, 1);
 		}
 	}
 
@@ -99,7 +100,25 @@ void ACameraPawn::BoostChargeBar(const FInputActionValue& Value)
 	Charge += 0.5f;
 }
 
-float ACameraPawn::GetCurrentAccuracy()
+void ACameraPawn::ConfirmLaunchAngle(const FInputActionValue& Value)
+{
+	LaunchArrow->SetIsMovingSprite(false);
+	ConfirmedLaunchAngle = GetLaunchArrowRotation().Pitch;
+
+	LaunchArrow->HandleDestruction();
+}
+
+void ACameraPawn::RestartGame()
+{
+	ThePunchGameMode->RestartGame();
+}
+
+void ACameraPawn::QuitGame()
+{
+	ThePunchGameMode->QuitGame();
+}
+
+float ACameraPawn::GetCurrentAccuracy() const
 {
 	FVector CrosshairLocation = SpriteComp->GetComponentLocation();
 	FVector BagLocation = BagPawn->GetSpringArmLocation();
@@ -110,14 +129,24 @@ float ACameraPawn::GetCurrentAccuracy()
 	return FMath::Max(MaxAccuracyScore - DistanceFromTarget / AccuracyScoreDivider, 0.1);
 }
 
+FRotator ACameraPawn::GetLaunchArrowRotation()
+{
+	return LaunchArrow->GetActorRotation();
+}
+
 FVector ACameraPawn::GetSpringArmLocation()
 {
 	return SpringArmComp->GetComponentLocation();
 }
 
+float ACameraPawn::GetLaunchPower()
+{
+	return ConfirmedCharge * ConfirmedAccuracy * SuccessfulPunchCount;
+}
+
 void ACameraPawn::ConfirmCharge()
 {
-	ConfirmedCharge = FMath::Min(Charge, MaxCharge);
+	ConfirmedCharge = FMath::Max(FMath::Min(Charge, MaxCharge), .1);
 }
 
 void ACameraPawn::ConfirmAccuracy()
@@ -134,7 +163,7 @@ void ACameraPawn::ChangeMappingContext(int Game)
 			if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem< UEnhancedInputLocalPlayerSubsystem>(ThePunchPlayerController->GetLocalPlayer()))
 			{
 				Subsystem->RemoveMappingContext(BoostBarMappingContext);
-				Subsystem->AddMappingContext(AimCrosshairMappingContext, 0);
+				Subsystem->AddMappingContext(AimCrosshairMappingContext, 1);
 			}
 		}
 	}
@@ -145,7 +174,28 @@ void ACameraPawn::ChangeMappingContext(int Game)
 			if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem< UEnhancedInputLocalPlayerSubsystem>(ThePunchPlayerController->GetLocalPlayer()))
 			{
 				Subsystem->RemoveMappingContext(AimCrosshairMappingContext);
-				Subsystem->AddMappingContext(ThrowPunchMappingContext, 0);
+				Subsystem->AddMappingContext(ThrowPunchMappingContext, 1);
+			}
+		}
+	}
+	else if (Game == 4)
+	{
+		if (ThePunchPlayerController)
+		{
+			if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem< UEnhancedInputLocalPlayerSubsystem>(ThePunchPlayerController->GetLocalPlayer()))
+			{
+				Subsystem->RemoveMappingContext(ThrowPunchMappingContext);
+				Subsystem->AddMappingContext(LaunchAngleMappingContext, 1);
+			}
+		}
+	}
+	else if (Game == 6)
+	{
+		if (ThePunchPlayerController)
+		{
+			if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem< UEnhancedInputLocalPlayerSubsystem>(ThePunchPlayerController->GetLocalPlayer()))
+			{
+				Subsystem->RemoveMappingContext(LaunchAngleMappingContext);
 			}
 		}
 	}
@@ -169,14 +219,40 @@ void ACameraPawn::MoveCameraToPunchBag(float CameraDistanceFromBag)
 	SpriteComp->SetRelativeLocation(CrosshairLocation);
 }
 
+void ACameraPawn::SpawnLaunchArrow(UClass* ArrowClass, FTransform ArrowTransform)
+{
+	LaunchArrow = GetWorld()->SpawnActorDeferred<AScalableSprite>(ArrowClass, ArrowTransform, this);
+	LaunchArrow->SetRotateSpeed(LaunchArrow->GetRotateSpeed() * (FMath::Max((SuccessfulPunchCount + ConfirmedCharge),1)));
+	LaunchArrow->SetIsMovingSprite(true);
+	LaunchArrow->FinishSpawning(ArrowTransform);
+}
+
+void ACameraPawn::Launch(float LaunchAngle, float LaunchPower)
+{
+	InitialXOffset = GetActorLocation().X;
+
+	CapsuleComp->SetSimulatePhysics(true);
+	
+	FVector Impulse(LaunchPower*((100-LaunchAngle)/100), 0, LaunchPower * (LaunchAngle / 100));
+
+	Impulse *= LaunchScalar;
+
+	CapsuleComp->AddImpulse(Impulse);
+
+	FVector AngularImpulse = GetActorRightVector()*AngularLaunchScalar*LaunchPower;
+
+	CapsuleComp->AddAngularImpulseInDegrees(AngularImpulse);
+}
+
 void ACameraPawn::ThrowPunch(const FInputActionValue& Value)
 {
 	if (ThePunchPlayerController)
 	{
 		FHitResult PunchHitResult;
-		ThePunchPlayerController->GetHitResultUnderCursor(ECollisionChannel::ECC_Destructible, false, PunchHitResult);
+		ThePunchPlayerController->GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, false, PunchHitResult);
 
-		ThePunchGameMode->GetPunchSpawner()->HandlePunch(&PunchHitResult);
+		if (ThePunchGameMode->GetPunchSpawner()->HandlePunch(&PunchHitResult))
+			SuccessfulPunchCount++;
 	}
 }
 
@@ -210,6 +286,9 @@ void ACameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 		EnhancedInputComponent->BindAction(BoostChargeBarAction, ETriggerEvent::Triggered, this, &ACameraPawn::BoostChargeBar);
 		EnhancedInputComponent->BindAction(MoveCrosshairAction, ETriggerEvent::Triggered, this, &ACameraPawn::MoveCrosshair);
 		EnhancedInputComponent->BindAction(ThrowPunchAction, ETriggerEvent::Triggered, this, &ACameraPawn::ThrowPunch);
+		EnhancedInputComponent->BindAction(ConfirmLaunchAction, ETriggerEvent::Triggered, this, &ACameraPawn::ConfirmLaunchAngle);
+		EnhancedInputComponent->BindAction(RestartGameAction, ETriggerEvent::Triggered, this, &ACameraPawn::RestartGame);
+		EnhancedInputComponent->BindAction(QuitGameAction, ETriggerEvent::Triggered, this, &ACameraPawn::QuitGame);
 	}
 }
 

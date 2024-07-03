@@ -20,12 +20,20 @@ public:
 	float GetGameTimerLength() const { return GameTimerLength; }
 
 	UFUNCTION(BlueprintCallable)
-	float GetTransitionTimerLength() const { return TransitionTimerLength; }
+	float GetStartTransitionTimerLength() const { return StartTransitionTimerLength; }
+	UFUNCTION(BlueprintCallable)
+	float GetGameTransitionTimerLength() const { return GameTransitionTimerLength; }
 
 	UFUNCTION(BlueprintCallable)
 	int GetCurrentGame() const { return CurrentGame; }
 
 	class APunchSpawner* GetPunchSpawner() { return PunchSpawner; }
+
+	void QuitGame();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void RestartGame();
+
 
 protected:
 	virtual void BeginPlay() override;
@@ -39,22 +47,19 @@ protected:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void RunTransitionPhaseUI();
-
-	void EndPhaseTransition();
-
 	UFUNCTION(BlueprintImplementableEvent)
-	void RunGame1UI();
+	void RunStartTransitionPhaseUI();
 
-	UFUNCTION(BlueprintImplementableEvent)
-	void RunGame2UI();
+	void TransitionIntoMicroGame();
 
-	UFUNCTION(BlueprintImplementableEvent)
-	void RunGame3UI();
+	void MicroIntoTransitionPhase();
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Game Settings")
 	float GameTimerLength;
-	UPROPERTY(EditDefaultsOnly)
-	float TransitionTimerLength;
+	UPROPERTY(EditDefaultsOnly, Category = "Game Settings")
+	float StartTransitionTimerLength = 3.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Game Settings")
+	float GameTransitionTimerLength = 1.f;
 
 	UPROPERTY(EditDefaultsOnly, Category="Game 2 Settings")
 	float Game2CameraDistance = 900.f;
@@ -65,9 +70,23 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Game 3 Settings")
 	TSubclassOf<class APunchSpawner> PunchSpawnerClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Game 4 Settings")
+	TSubclassOf<class AScalableSprite> ArrowSpriteClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Game 4 Settings")
+	float Game4CameraDistance = 1100.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Game 4 Settings")
+	float ArrowXOffset = 300.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Game 4 Settings")
+	float ArrowZOffset = 0.f;
+
 private:
 
 	class ACameraPawn* PlayerPawn;
+
+	class ACameraPawn* BagPawn;
 
 	class AThePunchPlayerController* PlayerController;
 
@@ -76,10 +95,11 @@ private:
 	void HandleStartup();
 
 	void Game2Startup();
-
 	void Game3Startup();
-
 	void Game4Startup();
+	void Game5Startup();
+
+	void EndGame();
 
 	TArray<float> GameScores;
 

@@ -19,5 +19,19 @@ public:
 	void SetPlayerEnabledState(bool bPlayerEnabled);
 
 	void SetCursorVisibility(bool IsVisible);
-	
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void RunGame1UI();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void RunGame2UI();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void RunGame3UI();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void RunGame4UI();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void RunEndGameUI();
 };

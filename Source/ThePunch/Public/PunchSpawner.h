@@ -19,6 +19,10 @@ public:
 
 	void ClearSpawner();
 
+	void SetSpawnRoot(FVector NewRoot) { SpawnRoot = NewRoot; }
+
+	void ScaleSpawnZone(float TightenScalar);
+
 	bool HandlePunch(FHitResult* ThrownPunchHitResult);
 
 protected:
@@ -61,6 +65,8 @@ private:
 	void HandleDeath();
 
 	float DeathTimerLength = 0.25f;
+
+	FVector SpawnRoot = FVector::ZeroVector;
 
 public:	
 	// Called every frame

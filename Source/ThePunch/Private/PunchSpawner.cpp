@@ -27,6 +27,22 @@ void APunchSpawner::ClearSpawner()
 	}
 }
 
+void APunchSpawner::ScaleSpawnZone(float TightenScalar)
+{
+	float XSpawnRange = MaxXSpawn - MinXSpawn;
+	float XMidpoint = MinXSpawn + (XSpawnRange / 2);
+	float ZSpawnRange = MaxZSpawn - MinZSpawn;
+	float ZMidpoint = MinZSpawn + (ZSpawnRange / 2);
+
+	XSpawnRange = XSpawnRange / TightenScalar;
+	ZSpawnRange = ZSpawnRange / TightenScalar;
+
+	MinXSpawn = XMidpoint - (XSpawnRange / 2);
+	MaxXSpawn = XMidpoint + (XSpawnRange / 2);
+	MinZSpawn = ZMidpoint - (ZSpawnRange / 2);
+	MaxZSpawn = ZMidpoint + (ZSpawnRange / 2);	
+}
+
 /*
 If punch was successful, function removes punch and returns true
 If punch was unsuccessful, funciton returns false
@@ -35,7 +51,7 @@ bool APunchSpawner::HandlePunch(FHitResult* ThrownPunchHitResult)
 {
 	if (IsActive)
 	{
-		if (ThrownPunchHitResult && ThrownPunchHitResult->GetActor())
+		if (ThrownPunchHitResult && ThrownPunchHitResult->bBlockingHit && ThrownPunchHitResult->GetActor())
 		{	
 			if (ThrownPunchHitResult->GetActor()->ActorHasTag(FName("SpawnedPunch")))
 			{
@@ -59,7 +75,7 @@ void APunchSpawner::BeginPlay()
 
 void APunchSpawner::SpawnPunch()
 {
-	FVector SpawnLocation(UKismetMathLibrary::RandomFloatInRange(MinXSpawn, MaxXSpawn), YSpawn, UKismetMathLibrary::RandomFloatInRange(MinZSpawn, MaxZSpawn));
+	FVector SpawnLocation(UKismetMathLibrary::RandomFloatInRange(SpawnRoot.X + MinXSpawn, SpawnRoot.X + MaxXSpawn), YSpawn, UKismetMathLibrary::RandomFloatInRange(SpawnRoot.Z + MinZSpawn, SpawnRoot.Z + MaxZSpawn));
 	auto SpawnedPunch = GetWorld()->SpawnActor<AScalableSprite>(SpawnSpriteClass, SpawnLocation, FRotator::ZeroRotator);
 	SpawnedPunch->Tags.Add(FName("SpawnedPunch"));
 

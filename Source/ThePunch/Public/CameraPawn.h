@@ -23,11 +23,23 @@ public:
 	UFUNCTION(BlueprintCallable)
 	float GetConfirmedCharge() { return ConfirmedCharge; }
 	UFUNCTION(BlueprintCallable)
-	float GetCurrentAccuracy();
+	float GetCurrentAccuracy() const;
+	UFUNCTION(BlueprintCallable)
+	float GetConfirmedAccuracy() const { return ConfirmedAccuracy; }
+	UFUNCTION(BlueprintCallable)
+	int GetSuccessfulPunches() const { return SuccessfulPunchCount; }
+	UFUNCTION(BlueprintCallable)
+	FRotator GetLaunchArrowRotation();
+	UFUNCTION(BlueprintCallable)
+	float GetDistanceFlown() const { return GetActorLocation().X - InitialXOffset; }
 
 	FVector GetSpringArmLocation();
 	
 	float GetConfirmedAccuracy() { return ConfirmedAccuracy; }
+
+	float GetConfirmedLaunchAngle() { return ConfirmedLaunchAngle; }
+
+	float GetLaunchPower();
 
 	void AddFist(class AScalableSprite* Fist) { Fists.Add(Fist); }
 
@@ -40,6 +52,10 @@ public:
 	void SetCrosshairVisibility(bool IsVisible);
 
 	void MoveCameraToPunchBag(float CameraDistanceFromBag);
+
+	void SpawnLaunchArrow(UClass* ArrowClass, FTransform ArrowTransform);
+
+	void Launch(float LaunchAngle, float LaunchPower);
 
 
 protected:
@@ -59,6 +75,15 @@ protected:
 	class UCameraComponent* CameraComp;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	class UInputAction* RestartGameAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	class UInputAction* QuitGameAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	class UInputMappingContext* BaseMappingContext;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	class UInputMappingContext* BoostBarMappingContext;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
@@ -75,6 +100,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	class UInputAction* ThrowPunchAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	class UInputMappingContext* LaunchAngleMappingContext;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	class UInputAction* ConfirmLaunchAction;
 
 	UPROPERTY(EditAnywhere)
 	float MaxCharge = 5.f;
@@ -101,6 +132,11 @@ protected:
 	float AccuracyScoreDivider = 50.f;
 
 	UPROPERTY(EditAnywhere)
+	float LaunchScalar = 100000.f;
+	UPROPERTY(EditAnywhere)
+	float AngularLaunchScalar = 100000.f;
+
+	UPROPERTY(EditAnywhere)
 	TArray<class AScalableSprite*> Fists;
 
 private:
@@ -111,11 +147,17 @@ private:
 
 	class AThePunchGameMode* ThePunchGameMode;
 
+	class AScalableSprite* LaunchArrow;
+
 	float Charge = 0.f;
 
 	float ConfirmedCharge = 0.1f;
 
 	float ConfirmedAccuracy = -1.f;
+
+	float ConfirmedLaunchAngle = 0.f;
+
+	float InitialXOffset = 0.f;
 
 	void UpdateCharge(float DeltaTime);
 
@@ -128,11 +170,17 @@ private:
 	float CrosshairXDirection;
 	float CrosshairZDirection;
 
-	int SuccessfulPunchCount = 0;
+	int SuccessfulPunchCount = 1;
 
 	void ThrowPunch(const FInputActionValue& Value);
 
 	void BoostChargeBar(const FInputActionValue& Value);
+
+	void ConfirmLaunchAngle(const FInputActionValue& Value);
+
+	void RestartGame();
+
+	void QuitGame();
 
 public:	
 	// Called every frame
