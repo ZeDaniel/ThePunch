@@ -22,7 +22,6 @@ void APunchSpawner::ClearSpawner()
 {
 	for (AScalableSprite* Sprite : SpawnedSprites)
 	{
-		UE_LOG(LogTemp, Display, TEXT("Sprite destroyed"));
 		Sprite->HandleDestruction();
 	}
 }

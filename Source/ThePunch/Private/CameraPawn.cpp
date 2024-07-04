@@ -13,6 +13,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "ThePunchGameMode.h"
 #include "PunchSpawner.h"
+#include "Components/AudioComponent.h"
 
 // Sets default values
 ACameraPawn::ACameraPawn()
@@ -21,7 +22,7 @@ ACameraPawn::ACameraPawn()
 	PrimaryActorTick.bCanEverTick = true;
 
 	CapsuleComp = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Capsule Component"));
-	RootComponent = CapsuleComp;
+	SetRootComponent(CapsuleComp);
 
 	SpriteComp = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("Sprite Component"));
 	SpriteComp->SetupAttachment(CapsuleComp);
@@ -31,6 +32,15 @@ ACameraPawn::ACameraPawn()
 
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	CameraComp->SetupAttachment(SpringArmComp);
+
+	AudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("Audio Component"));
+	AudioComp->SetupAttachment(RootComponent);
+
+	CountdownAudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("Countdown Audio Component"));
+	CountdownAudioComp->SetupAttachment(RootComponent);
+
+	MicroStartAudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("Micro Game Start Audio Component"));
+	MicroStartAudioComp->SetupAttachment(RootComponent);
 
 }
 
@@ -56,6 +66,8 @@ void ACameraPawn::BeginPlay()
 	BagPawn = Cast<ACameraPawn>(ReturnedActors[0]);
 
 	ThePunchGameMode = Cast<AThePunchGameMode>(UGameplayStatics::GetGameMode(GetWorld()));
+
+	CapsuleComp->OnComponentHit.AddDynamic(this, &ACameraPawn::OnComponentHit);
 }
 
 void ACameraPawn::UpdateCharge(float DeltaTime)
@@ -72,7 +84,11 @@ void ACameraPawn::UpdateCharge(float DeltaTime)
 
 void ACameraPawn::UpdateCrosshair(float DeltaTime)
 {
-	if (CrosshairTimer < 0)
+	if (CrosshairTimerDelay > 0)
+	{
+		CrosshairTimerDelay -= DeltaTime;
+	}
+	else if (CrosshairTimer < 0)
 	{
 		CrosshairXDirection = UKismetMathLibrary::RandomFloatInRange(-1, 1);
 		CrosshairZDirection = UKismetMathLibrary::RandomFloatInRange(-1, 1);
@@ -98,6 +114,7 @@ void ACameraPawn::MoveCrosshair(const FInputActionValue& Value)
 void ACameraPawn::BoostChargeBar(const FInputActionValue& Value)
 {
 	Charge += 0.5f;
+	PlayChargeSound();
 }
 
 void ACameraPawn::ConfirmLaunchAngle(const FInputActionValue& Value)
@@ -105,7 +122,12 @@ void ACameraPawn::ConfirmLaunchAngle(const FInputActionValue& Value)
 	LaunchArrow->SetIsMovingSprite(false);
 	ConfirmedLaunchAngle = GetLaunchArrowRotation().Pitch;
 
+	StopArrowSound();
+	StopCountdownSound();
+
 	LaunchArrow->HandleDestruction();
+
+	ThePunchGameMode->CallTransitionPhaseManually();
 }
 
 void ACameraPawn::RestartGame()
@@ -116,6 +138,114 @@ void ACameraPawn::RestartGame()
 void ACameraPawn::QuitGame()
 {
 	ThePunchGameMode->QuitGame();
+}
+
+void ACameraPawn::PlayChargeSound()
+{
+	if (ChargeSounds.Num() > ChargeSoundsIndex && ChargeSounds[ChargeSoundsIndex])
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), ChargeSounds[ChargeSoundsIndex], GetActorLocation());
+	}
+
+	ChargeSoundsIndex++;
+	if (ChargeSoundsIndex >= ChargeSounds.Num())
+		ChargeSoundsIndex = 0;
+}
+
+void ACameraPawn::PlayPunchSound()
+{
+	if (PunchSounds.Num() > 0)
+	{
+		int index = UKismetMathLibrary::RandomInteger(PunchSounds.Num());
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), PunchSounds[index], GetActorLocation());
+	}
+}
+
+void ACameraPawn::StartArrowSound()
+{
+	if (ArrowSound)
+	{
+		AudioComp->SetSound(ArrowSound);
+		AudioComp->Play();
+	}
+}
+
+void ACameraPawn::StopArrowSound()
+{
+	AudioComp->Stop();
+}
+
+void ACameraPawn::PlayLaunchSound(float LaunchPower)
+{
+	if (LaunchSound)
+	{
+		MicroStartAudioComp->SetSound(LaunchSound);
+	}
+	MicroStartAudioComp->SetVolumeMultiplier(LaunchPower / 125);
+	MicroStartAudioComp->Play();
+}
+
+void ACameraPawn::UpdateWindSound(float DeltaTime)
+{
+	float Speed = GetVelocity().Length();
+
+	float Volume = Speed / WindSoundDivisor;
+	Volume = UKismetMathLibrary::Clamp(Volume, 0, WindSoundStrength);
+	AudioComp->SetVolumeMultiplier(Speed / WindSoundDivisor);
+
+	if (!(AudioComp->IsPlaying()))
+	{
+		AudioComp->Play();
+	}
+
+	if (Speed == 0)
+	{
+		if (ConfettiTimer > 0)
+			ConfettiTimer -= DeltaTime;
+		else
+		{
+			AudioComp->Stop();
+			IsWindy = false;
+			PlayConfettiSound();
+		}
+	}
+}
+
+void ACameraPawn::PlayConfettiSound()
+{
+	if (ConfettiSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), ConfettiSound, CameraComp->GetComponentLocation());
+	}
+}
+
+void ACameraPawn::OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+{
+	if (LastZVelocity < -100)
+	{
+		if (HardCollisionSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), HardCollisionSound, GetActorLocation());
+		}
+	}
+	else if (LastZVelocity >= -2 && LastZVelocity < 1 && GetVelocity().X > 10)
+	{
+		if (DragTimer > 0)
+		{
+			DragTimer -= UGameplayStatics::GetWorldDeltaSeconds(GetWorld());
+		}
+		else
+		{
+			if (!(CountdownAudioComp->IsPlaying()))
+			{
+				if (DragCollisionSound)
+				{
+					CountdownAudioComp->SetSound(DragCollisionSound);
+				}
+				CountdownAudioComp->Play();
+			}
+		}
+	}
 }
 
 float ACameraPawn::GetCurrentAccuracy() const
@@ -225,11 +355,15 @@ void ACameraPawn::SpawnLaunchArrow(UClass* ArrowClass, FTransform ArrowTransform
 	LaunchArrow->SetRotateSpeed(LaunchArrow->GetRotateSpeed() * (FMath::Max((SuccessfulPunchCount + ConfirmedCharge),1)));
 	LaunchArrow->SetIsMovingSprite(true);
 	LaunchArrow->FinishSpawning(ArrowTransform);
+
+	StartArrowSound();
 }
 
 void ACameraPawn::Launch(float LaunchAngle, float LaunchPower)
 {
 	InitialXOffset = GetActorLocation().X;
+
+	PlayLaunchSound(LaunchPower);
 
 	CapsuleComp->SetSimulatePhysics(true);
 	
@@ -244,6 +378,53 @@ void ACameraPawn::Launch(float LaunchAngle, float LaunchPower)
 	CapsuleComp->AddAngularImpulseInDegrees(AngularImpulse);
 }
 
+void ACameraPawn::PlayCountdownSound()
+{
+	CountdownAudioComp->Play();
+}
+
+void ACameraPawn::PlayCountdownSound(float SoundDuration)
+{
+	CountdownAudioComp->Play();
+	CountdownAudioComp->StopDelayed(SoundDuration);
+}
+
+void ACameraPawn::StopCountdownSound()
+{
+	CountdownAudioComp->Stop();
+}
+
+void ACameraPawn::PlayMicroStartSound()
+{
+	MicroStartAudioComp->Play();
+}
+
+void ACameraPawn::PlayMicroStartSound(float delay)
+{
+	FTimerHandle AudioTimer;
+	FTimerDelegate AudioTimerDelegate = FTimerDelegate::CreateUObject(this, &ACameraPawn::PlayMicroStartSound);
+	GetWorldTimerManager().SetTimer(AudioTimer, AudioTimerDelegate, delay, false);
+}
+
+void ACameraPawn::PlayCrosshairSound(float SoundDuration)
+{
+	if (CrosshairSound)
+	{
+		AudioComp->SetSound(CrosshairSound);
+		AudioComp->Play();
+		AudioComp->StopDelayed(SoundDuration);
+	}
+}
+
+void ACameraPawn::PlayWindSound()
+{
+	if (WindSound)
+	{
+		AudioComp->SetSound(WindSound);
+		IsWindy = true;
+	}
+}
+
 void ACameraPawn::ThrowPunch(const FInputActionValue& Value)
 {
 	if (ThePunchPlayerController)
@@ -252,7 +433,10 @@ void ACameraPawn::ThrowPunch(const FInputActionValue& Value)
 		ThePunchPlayerController->GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, false, PunchHitResult);
 
 		if (ThePunchGameMode->GetPunchSpawner()->HandlePunch(&PunchHitResult))
+		{
+			PlayPunchSound();
 			SuccessfulPunchCount++;
+		}
 	}
 }
 
@@ -273,6 +457,23 @@ void ACameraPawn::Tick(float DeltaTime)
 	else if (ThePunchGameMode->GetCurrentGame() == 2 && InputEnabled())
 	{
 		UpdateCrosshair(DeltaTime);
+	}
+
+	if (IsWindy)
+	{
+		UpdateWindSound(DeltaTime);
+	}
+
+	LastZVelocity = GetVelocity().Z;
+
+	if (ThePunchGameMode->GetCurrentGame() == 5 && DragTimer != 0.01f)
+	{
+		if (LastZVelocity > 10 || GetVelocity().X < 10)
+		{
+			UE_LOG(LogTemp, Display, TEXT("Drag Timer reset"));
+			MicroStartAudioComp->Stop();
+			DragTimer = 0.01f;
+		}
 	}
 }
 

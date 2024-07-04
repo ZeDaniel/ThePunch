@@ -4,6 +4,7 @@
 #include "ScalableSprite.h"
 #include "PaperSpriteComponent.h"
 #include "Components/BoxComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AScalableSprite::AScalableSprite()
@@ -33,12 +34,18 @@ void AScalableSprite::HandleDestruction()
 	//sound effect and anim
 	BoxComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	SpriteComp->SetVisibility(false);
+
+	if(SpriteDeathSound)
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), SpriteDeathSound, GetActorLocation());
 }
 
 // Called when the game starts or when spawned
 void AScalableSprite::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (SpriteSpawnSound)
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), SpriteSpawnSound, GetActorLocation());
 }
 
 // Called every frame

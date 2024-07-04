@@ -10,6 +10,11 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 
+void AThePunchGameMode::CallTransitionPhaseManually()
+{
+	RunTransitionPhase();
+}
+
 void AThePunchGameMode::QuitGame()
 {
 	UE_LOG(LogTemp, Display, TEXT("Quit action called"));
@@ -38,6 +43,7 @@ void AThePunchGameMode::RunMicroGame()
 	{
 		PlayerController->RunGame2UI();
 		RunMicroGameUI();
+		PlayerPawn->PlayCrosshairSound(GameTimerLength);
 		MicroIntoTransitionPhase();
 	}	
 	else if (CurrentGame == 3)
@@ -56,14 +62,14 @@ void AThePunchGameMode::RunMicroGame()
 		FTransform ArrowTransform(FRotator::ZeroRotator, ArrowLocation);
 
 		PlayerPawn->SpawnLaunchArrow(ArrowSpriteClass, ArrowTransform);
+		PlayerPawn->PlayCountdownSound();
 
-		RunMicroGameUI();
-		MicroIntoTransitionPhase();
+		//RunMicroGameUI();
+		//MicroIntoTransitionPhase();
 	}
 	else if (CurrentGame == 5)
 	{
 		EndGame();
-		BagPawn->Launch(PlayerPawn->GetConfirmedLaunchAngle(), PlayerPawn->GetLaunchPower());
 	}
 
 	PlayerController->SetPlayerEnabledState(true);
@@ -99,13 +105,13 @@ void AThePunchGameMode::RunTransitionPhase()
 	{
 		PlayerController->SetPlayerEnabledState(false);
 		EndGame();
-		TransitionIntoMicroGame();
 	}
 }
 
 void AThePunchGameMode::TransitionIntoMicroGame()
 {
 	RunTransitionPhaseUI();
+	PlayerPawn->PlayMicroStartSound();
 
 	FTimerHandle StartTimer;
 	FTimerDelegate StartTimerDelegate = FTimerDelegate::CreateUObject(this, &AThePunchGameMode::RunMicroGame);
@@ -114,6 +120,8 @@ void AThePunchGameMode::TransitionIntoMicroGame()
 
 void AThePunchGameMode::MicroIntoTransitionPhase()
 {
+	PlayerPawn->PlayCountdownSound(GameTimerLength);
+
 	FTimerHandle GameTimer;
 	FTimerDelegate GameTimerDelegate = FTimerDelegate::CreateUObject(this, &AThePunchGameMode::RunTransitionPhase);
 	GetWorldTimerManager().SetTimer(GameTimer, GameTimerDelegate, GameTimerLength, false);
@@ -148,6 +156,8 @@ void AThePunchGameMode::HandleStartup()
 	CurrentGame = 1;
 
 	RunStartTransitionPhaseUI();
+	PlayerPawn->PlayCountdownSound(StartTransitionTimerLength-1);
+	PlayerPawn->PlayMicroStartSound(2.f);
 
 	FTimerHandle StartTimer;
 	FTimerDelegate StartTimerDelegate = FTimerDelegate::CreateUObject(this, &AThePunchGameMode::RunMicroGame);
@@ -193,15 +203,19 @@ void AThePunchGameMode::Game4Startup()
 
 void AThePunchGameMode::EndGame()
 {
+	CurrentGame = 5;
+
 	PlayerController->UnPossess();
 	if (BagPawn)
 	{
 		PlayerController->Possess(BagPawn);
 	}
 
-	CurrentGame = 5;
+	BagPawn->Launch(PlayerPawn->GetConfirmedLaunchAngle(), PlayerPawn->GetLaunchPower());
+	BagPawn->PlayWindSound();
 
 	PlayerPawn->ChangeMappingContext(CurrentGame);
-	
+	PlayerController->SetPlayerEnabledState(true);
+
 	PlayerController->RunEndGameUI();
 }

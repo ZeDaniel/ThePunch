@@ -57,6 +57,17 @@ public:
 
 	void Launch(float LaunchAngle, float LaunchPower);
 
+	void PlayCountdownSound();
+	void PlayCountdownSound(float SoundDuration);
+	void StopCountdownSound();
+
+	void PlayMicroStartSound();
+	void PlayMicroStartSound(float delay);
+
+	void PlayCrosshairSound(float SoundDuration);
+
+	void PlayWindSound();
+
 
 protected:
 	// Called when the game starts or when spawned
@@ -68,11 +79,20 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	class UPaperSpriteComponent* SpriteComp;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	class USpringArmComponent* SpringArmComp;
 
 	UPROPERTY(EditDefaultsOnly)
 	class UCameraComponent* CameraComp;
+
+	UPROPERTY(EditDefaultsOnly)
+	class UAudioComponent* AudioComp;
+
+	UPROPERTY(EditDefaultsOnly)
+	class UAudioComponent* CountdownAudioComp;
+
+	UPROPERTY(EditDefaultsOnly)
+	class UAudioComponent* MicroStartAudioComp;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	class UInputAction* RestartGameAction;
@@ -137,7 +157,31 @@ protected:
 	float AngularLaunchScalar = 100000.f;
 
 	UPROPERTY(EditAnywhere)
+	float WindSoundStrength = 1.f;
+
+	UPROPERTY(EditAnywhere)
 	TArray<class AScalableSprite*> Fists;
+
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	class USoundWave* CountdownSound;
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	TArray<class USoundWave*> ChargeSounds;
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	class USoundWave* CrosshairSound;
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	TArray<class USoundWave*> PunchSounds;
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	class USoundWave* ArrowSound;
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	class USoundWave* LaunchSound;
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	class USoundWave* WindSound;
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	class USoundWave* ConfettiSound;
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	class USoundWave* HardCollisionSound;
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	class USoundWave* DragCollisionSound;
 
 private:
 
@@ -157,7 +201,7 @@ private:
 
 	float ConfirmedLaunchAngle = 0.f;
 
-	float InitialXOffset = 0.f;
+	float InitialXOffset = 1760.f;
 
 	void UpdateCharge(float DeltaTime);
 
@@ -165,7 +209,7 @@ private:
 
 	void MoveCrosshair(const FInputActionValue& Value);
 
-	float CrosshairTimer = 0.5f;
+	float CrosshairTimer = -1.f;
 
 	float CrosshairXDirection;
 	float CrosshairZDirection;
@@ -181,6 +225,32 @@ private:
 	void RestartGame();
 
 	void QuitGame();
+
+	float ChargeSoundsIndex = 0;
+
+	void PlayChargeSound();
+
+	void PlayPunchSound();
+
+	void StartArrowSound();
+	void StopArrowSound();
+
+	void PlayLaunchSound(float LaunchPower);
+
+	bool IsWindy = false;
+
+	void UpdateWindSound(float DeltaTime);
+	float WindSoundDivisor = 10000 / WindSoundStrength;
+
+	void PlayConfettiSound();
+	float ConfettiTimer = 1.f;
+
+	UFUNCTION()
+	void OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	float LastZVelocity = -5000.f;
+	float DragTimer = 0.01f;
+
 
 public:	
 	// Called every frame

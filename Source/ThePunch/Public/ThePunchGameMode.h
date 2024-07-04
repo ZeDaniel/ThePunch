@@ -29,6 +29,8 @@ public:
 
 	class APunchSpawner* GetPunchSpawner() { return PunchSpawner; }
 
+	void CallTransitionPhaseManually();
+
 	void QuitGame();
 
 	UFUNCTION(BlueprintImplementableEvent)

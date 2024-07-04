@@ -41,6 +41,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Move Settings")
 	float RotateSpeed = 5.f;
 
+	UPROPERTY(EditAnywhere)
+	class USoundWave* SpriteSpawnSound;
+	UPROPERTY(EditAnywhere)
+	class USoundWave* SpriteDeathSound;
+
 	virtual void BeginPlay() override;
 
 	float SpriteScale = 1.f;

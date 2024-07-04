@@ -58,7 +58,7 @@ private:
 
 	float ActiveLifeTime = 0.f;
 
-	float TimeSinceLastSpawn = 0.f;
+	float TimeSinceLastSpawn = SpawnInterval;
 
 	void SpawnPunch();
 
