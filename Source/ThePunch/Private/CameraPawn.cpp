@@ -42,6 +42,9 @@ ACameraPawn::ACameraPawn()
 	MicroStartAudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("Micro Game Start Audio Component"));
 	MicroStartAudioComp->SetupAttachment(RootComponent);
 
+	BagDragAudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("Bag Drag Audio Component"));
+	BagDragAudioComp->SetupAttachment(RootComponent);
+
 }
 
 // Called when the game starts or when spawned
@@ -114,6 +117,7 @@ void ACameraPawn::MoveCrosshair(const FInputActionValue& Value)
 void ACameraPawn::BoostChargeBar(const FInputActionValue& Value)
 {
 	Charge += 0.5f;
+	AudioComp->SetPitchMultiplier(Charge / 2);
 	PlayChargeSound();
 }
 
@@ -130,6 +134,14 @@ void ACameraPawn::ConfirmLaunchAngle(const FInputActionValue& Value)
 	ThePunchGameMode->CallTransitionPhaseManually();
 }
 
+void ACameraPawn::PlayPunchAnimation(FVector StartLocation, FVector TargetLocation, float DeltaTime, float InterpSpeed)
+{
+	FVector NewLocation = FMath::VInterpTo(StartLocation, TargetLocation, DeltaTime, InterpSpeed);
+
+	if(Fists.Num() > 0)
+		Fists[0]->SetActorLocation(NewLocation);
+}
+
 void ACameraPawn::RestartGame()
 {
 	ThePunchGameMode->RestartGame();
@@ -142,14 +154,7 @@ void ACameraPawn::QuitGame()
 
 void ACameraPawn::PlayChargeSound()
 {
-	if (ChargeSounds.Num() > ChargeSoundsIndex && ChargeSounds[ChargeSoundsIndex])
-	{
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), ChargeSounds[ChargeSoundsIndex], GetActorLocation());
-	}
-
-	ChargeSoundsIndex++;
-	if (ChargeSoundsIndex >= ChargeSounds.Num())
-		ChargeSoundsIndex = 0;
+	AudioComp->Play();
 }
 
 void ACameraPawn::PlayPunchSound()
@@ -221,29 +226,11 @@ void ACameraPawn::PlayConfettiSound()
 
 void ACameraPawn::OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (LastZVelocity < -100)
+	if (LastZVelocity < -500)
 	{
 		if (HardCollisionSound)
 		{
 			UGameplayStatics::PlaySoundAtLocation(GetWorld(), HardCollisionSound, GetActorLocation());
-		}
-	}
-	else if (LastZVelocity >= -2 && LastZVelocity < 1 && GetVelocity().X > 10)
-	{
-		if (DragTimer > 0)
-		{
-			DragTimer -= UGameplayStatics::GetWorldDeltaSeconds(GetWorld());
-		}
-		else
-		{
-			if (!(CountdownAudioComp->IsPlaying()))
-			{
-				if (DragCollisionSound)
-				{
-					CountdownAudioComp->SetSound(DragCollisionSound);
-				}
-				CountdownAudioComp->Play();
-			}
 		}
 	}
 }
@@ -264,6 +251,11 @@ FRotator ACameraPawn::GetLaunchArrowRotation()
 	return LaunchArrow->GetActorRotation();
 }
 
+void ACameraPawn::SetFistOrigin(FVector Origin)
+{
+	FistOrigin = Origin;
+}
+
 FVector ACameraPawn::GetSpringArmLocation()
 {
 	return SpringArmComp->GetComponentLocation();
@@ -277,6 +269,7 @@ float ACameraPawn::GetLaunchPower()
 void ACameraPawn::ConfirmCharge()
 {
 	ConfirmedCharge = FMath::Max(FMath::Min(Charge, MaxCharge), .1);
+	AudioComp->SetPitchMultiplier(1);
 }
 
 void ACameraPawn::ConfirmAccuracy()
@@ -465,14 +458,23 @@ void ACameraPawn::Tick(float DeltaTime)
 	}
 
 	LastZVelocity = GetVelocity().Z;
+	LastXVelocity = GetVelocity().X;
 
-	if (ThePunchGameMode->GetCurrentGame() == 5 && DragTimer != 0.01f)
+	if (ThePunchGameMode->GetCurrentGame() == 5)
 	{
-		if (LastZVelocity > 10 || GetVelocity().X < 10)
+		PlayPunchAnimation(FistOrigin, FistOrigin+FistOffset, DeltaTime, 0.01f);
+
+		if ((GetActorLocation().Z > 156 || GetVelocity().X < 10) && DragTimer < 0.01f)
 		{
-			UE_LOG(LogTemp, Display, TEXT("Drag Timer reset"));
-			MicroStartAudioComp->Stop();
+			BagDragAudioComp->Stop();
 			DragTimer = 0.01f;
+		}
+		else if(GetActorLocation().Z <= 156 && GetActorLocation().Z >= 154)
+		{
+			if (DragTimer > 0)
+				DragTimer -= DeltaTime;
+			else if (!(BagDragAudioComp->IsPlaying()))
+				BagDragAudioComp->Play();
 		}
 	}
 }

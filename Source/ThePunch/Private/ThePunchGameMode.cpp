@@ -150,6 +150,7 @@ void AThePunchGameMode::HandleStartup()
 		if (Sprite)
 		{
 			PlayerPawn->AddFist(Sprite);
+			PlayerPawn->SetFistOrigin(Sprite->GetActorLocation());
 		}
 	}
 

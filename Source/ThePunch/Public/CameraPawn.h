@@ -33,6 +33,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	float GetDistanceFlown() const { return GetActorLocation().X - InitialXOffset; }
 
+	void SetFistOrigin(FVector Origin);
+
 	FVector GetSpringArmLocation();
 	
 	float GetConfirmedAccuracy() { return ConfirmedAccuracy; }
@@ -93,6 +95,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly)
 	class UAudioComponent* MicroStartAudioComp;
+
+	UPROPERTY(EditDefaultsOnly)
+	class UAudioComponent* BagDragAudioComp;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	class UInputAction* RestartGameAction;
@@ -165,8 +170,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Sounds")
 	class USoundWave* CountdownSound;
 	UPROPERTY(EditAnywhere, Category = "Sounds")
-	TArray<class USoundWave*> ChargeSounds;
-	UPROPERTY(EditAnywhere, Category = "Sounds")
 	class USoundWave* CrosshairSound;
 	UPROPERTY(EditAnywhere, Category = "Sounds")
 	TArray<class USoundWave*> PunchSounds;
@@ -180,8 +183,9 @@ protected:
 	class USoundWave* ConfettiSound;
 	UPROPERTY(EditAnywhere, Category = "Sounds")
 	class USoundWave* HardCollisionSound;
-	UPROPERTY(EditAnywhere, Category = "Sounds")
-	class USoundWave* DragCollisionSound;
+
+	UPROPERTY(EditAnywhere)
+	FVector FistOffset;
 
 private:
 
@@ -222,6 +226,8 @@ private:
 
 	void ConfirmLaunchAngle(const FInputActionValue& Value);
 
+	void PlayPunchAnimation(FVector StartLocation, FVector TargetLocation, float DeltaTime, float InterpSpeed);
+
 	void RestartGame();
 
 	void QuitGame();
@@ -249,7 +255,10 @@ private:
 	void OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
 	float LastZVelocity = -5000.f;
+	float LastXVelocity = -5000.f;
 	float DragTimer = 0.01f;
+
+	FVector FistOrigin;
 
 
 public:	
