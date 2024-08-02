@@ -31,7 +31,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	FRotator GetLaunchArrowRotation();
 	UFUNCTION(BlueprintCallable)
-	float GetDistanceFlown() const { return GetActorLocation().X - InitialXOffset; }
+	float GetDistanceFlown() const { return (GetActorLocation().X - InitialXOffset)/100; }
 
 	void SetFistOrigin(FVector Origin);
 
