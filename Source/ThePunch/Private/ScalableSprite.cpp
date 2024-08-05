@@ -39,6 +39,11 @@ void AScalableSprite::HandleDestruction()
 		UGameplayStatics::PlaySoundAtLocation(GetWorld(), SpriteDeathSound, GetActorLocation());
 }
 
+void AScalableSprite::SetSpriteColor(FColor NewColor)
+{
+	SpriteComp->SetSpriteColor(NewColor);
+}
+
 // Called when the game starts or when spawned
 void AScalableSprite::BeginPlay()
 {

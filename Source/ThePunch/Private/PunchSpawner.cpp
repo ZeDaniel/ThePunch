@@ -4,6 +4,7 @@
 #include "PunchSpawner.h"
 #include "ScalableSprite.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 APunchSpawner::APunchSpawner()
@@ -70,6 +71,7 @@ void APunchSpawner::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 }
 
 void APunchSpawner::SpawnPunch()
@@ -108,6 +110,24 @@ void APunchSpawner::Tick(float DeltaTime)
 			TimeSinceLastSpawn = 0;
 			SpawnPunch();
 		}
-	}	
+	}
+
+	if (PlayerController)
+	{
+		FHitResult CursorHitResult;
+		PlayerController->GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, false, CursorHitResult);
+
+		if (CursorHitResult.GetActor() && CursorHitResult.GetActor()->ActorHasTag(FName("SpawnedPunch")))
+		{
+			if (LastHighlightedSprite)
+			{
+				LastHighlightedSprite->SetSpriteColor(FColor::White);
+			}
+
+			AScalableSprite* HitSprite = Cast<AScalableSprite>(CursorHitResult.GetActor());
+			HitSprite->SetSpriteColor(HighlightColor);
+			LastHighlightedSprite = HitSprite;
+		}
+	}
 }
 

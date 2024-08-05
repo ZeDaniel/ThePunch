@@ -21,6 +21,8 @@ public:
 
 	void SetSpawnRoot(FVector NewRoot) { SpawnRoot = NewRoot; }
 
+	void SetHighlightColor(FColor NewColor) { HighlightColor = NewColor; }
+
 	void ScaleSpawnZone(float TightenScalar);
 
 	bool HandlePunch(FHitResult* ThrownPunchHitResult);
@@ -67,6 +69,11 @@ private:
 	float DeathTimerLength = 0.25f;
 
 	FVector SpawnRoot = FVector::ZeroVector;
+
+	FColor HighlightColor = FColor::Yellow;
+	class AScalableSprite* LastHighlightedSprite;
+
+	APlayerController* PlayerController;
 
 public:	
 	// Called every frame

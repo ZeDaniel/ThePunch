@@ -26,6 +26,8 @@ public:
 
 	void HandleDestruction();
 
+	void SetSpriteColor(FColor NewColor);
+
 protected:
 	// Called when the game starts or when spawned
 	UPROPERTY(VisibleAnywhere)

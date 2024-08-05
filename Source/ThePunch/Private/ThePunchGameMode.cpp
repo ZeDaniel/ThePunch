@@ -190,6 +190,12 @@ void AThePunchGameMode::Game3Startup()
 		PunchSpawner->SetOwner(this);
 		PunchSpawner->SetSpawnRoot(BagPawn->GetSpringArmLocation());
 		PunchSpawner->ScaleSpawnZone(FMath::Max(PlayerPawn->GetConfirmedAccuracy()-.25, 1));
+
+		FColor PunchColor = FColor::Blue;
+
+		PunchColor.R = FMath::Lerp(0, 255, PlayerPawn->GetConfirmedCharge()/5);
+		PunchColor.B = FMath::Lerp(255, 0, PlayerPawn->GetConfirmedCharge()/5);
+		PunchSpawner->SetHighlightColor(PunchColor);
 	}
 }
 
